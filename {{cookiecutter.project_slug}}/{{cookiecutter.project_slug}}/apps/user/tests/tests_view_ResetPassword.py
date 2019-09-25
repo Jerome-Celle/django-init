@@ -8,7 +8,7 @@ from rest_framework.test import APIClient, APITestCase
 from django.urls import reverse
 from django.test.utils import override_settings
 
-from ..factories import UserFactory
+from {{cookiecutter.project_slug}}.factories import UserFactory
 from ..models import ActionToken
 
 

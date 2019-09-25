@@ -1,52 +1,29 @@
 import binascii
 import os
 
-from django.conf import settings
-from django.db import models
-from django.utils import timezone
-from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 
+from django.utils.translation import ugettext_lazy as _
+
+from {{cookiecutter.project_slug}}.apps.user.managers import UserManager, ActionTokenManager
 from rest_framework.authtoken.models import Token
-
-from .managers import ActionTokenManager
+from django.utils import timezone
+from django.conf import settings
 
 
 class User(AbstractUser):
     """Abstraction of the base User model. Needed to extend in the future."""
 
-    GENDER_CHOICES = (
-        ('M', _("Male")),
-        ('F', _("Female")),
-        ('T', _("Trans")),
-        ('A', _("Do not wish to identify myself")),
-    )
+    username = None
+    email = models.EmailField(_('email address'), unique=True)
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
 
-    phone = models.CharField(
-        verbose_name=_("Phone number"),
-        blank=True,
-        null=True,
-        max_length=17,
-    )
-    other_phone = models.CharField(
-        verbose_name=_("Other number"),
-        blank=True,
-        null=True,
-        max_length=17,
-    )
-    birthdate = models.DateField(
-        blank=True,
-        null=True,
-        max_length=100,
-        verbose_name=_("Birthdate"),
-    )
-    gender = models.CharField(
-        blank=True,
-        null=True,
-        max_length=100,
-        choices=GENDER_CHOICES,
-        verbose_name=_("Gender"),
-    )
+    objects = UserManager()
+
+    def __str__(self):
+        return self.email
 
 
 class TemporaryToken(Token):

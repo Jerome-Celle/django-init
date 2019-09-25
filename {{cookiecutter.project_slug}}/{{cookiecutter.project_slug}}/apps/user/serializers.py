@@ -1,17 +1,18 @@
 import re
 
 from django.contrib.auth import get_user_model, password_validation
-from django.core.exceptions import ValidationError
+from django.contrib.auth.models import Permission
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
+
+from rest_framework.settings import api_settings
 
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 
-from .models import (
-    ActionToken,
-)
+from {{cookiecutter.project_slug}}.apps.user.models import ActionToken
 
 User = get_user_model()
 
@@ -33,10 +34,7 @@ class UserUpdateSerializer(serializers.HyperlinkedModelSerializer):
     only.
     """
     id = serializers.ReadOnlyField()
-    username = serializers.HiddenField(
-        default=None,
-        help_text=_("A valid username."),
-    )
+
     new_password = serializers.CharField(
         max_length=128,
         required=False,
@@ -66,7 +64,6 @@ class UserUpdateSerializer(serializers.HyperlinkedModelSerializer):
         return phone_number_validator(value)
 
     def update(self, instance, validated_data):
-        validated_data['username'] = instance.username
         if 'new_password' in validated_data.keys():
             try:
                 old_pw = validated_data.pop('password')
@@ -102,13 +99,6 @@ class UserUpdateSerializer(serializers.HyperlinkedModelSerializer):
                 'help_text': _("A valid password."),
             },
             'new_password': {'write_only': True},
-            'birthdate': {
-                'help_text': _("Date in the format 'dd/mm/yyyy'"),
-            },
-            'gender': {
-                'allow_blank': False,
-                'help_text': _("(M)ale, (F)emale, (T)rans, (A)nonymous"),
-            },
             'first_name': {
                 'allow_blank': False,
                 'help_text': _("A valid first name."),
@@ -143,15 +133,7 @@ class UserSerializer(UserUpdateSerializer):
         label=_('Email address'),
         max_length=254,
         required=True,
-        validators=[
-            UniqueValidator(
-                queryset=User.objects.all(),
-                message=_(
-                    "An account for the specified email "
-                    "address already exists."
-                ),
-            ),
-        ],
+
         help_text=_("A valid email address."),
     )
 
@@ -162,22 +144,35 @@ class UserSerializer(UserUpdateSerializer):
             raise serializers.ValidationError(err.messages)
         return value
 
-    def validate(self, attrs):
-        attrs['username'] = attrs['email']
-        return attrs
-
     def create(self, validated_data):
         """
         Validate choosen password and create User object.
         """
-        user = User(**validated_data)
+        email = validated_data.pop('email')
+        password = validated_data.pop('password')
+        try:
+            user = User.objects.get(email=email)
+
+            if user.has_usable_password() and user.is_active:
+                raise serializers.ValidationError({
+                    "email": [
+                        _(
+                            "An account for the specified email "
+                            "address already exists."
+                        )
+                    ]
+                })
+
+        except ObjectDoesNotExist:
+            pass
+
+        user, created = User.objects.get_or_create(
+            email=email, defaults=validated_data)
 
         # Hash the user's password
-        user.set_password(validated_data['password'])
-
+        user.set_password(password)
         # Put user inactive by default
         user.is_active = False
-
         user.save()
 
         # Create an ActivationToken to activate user in the future
@@ -196,13 +191,6 @@ class UserSerializer(UserUpdateSerializer):
                 'style': {'input_type': 'password'},
                 'write_only': True,
                 'help_text': _("A valid password."),
-            },
-            'gender': {
-                'allow_blank': False,
-                'help_text': _("(M)ale, (F)emale, (T)rans, (A)nonymous")
-            },
-            'birthdate': {
-                'help_text': _("Date in the format 'dd/mm/yyyy'"),
             },
             'first_name': {
                 'allow_blank': False,
@@ -230,11 +218,18 @@ class CustomAuthTokenSerializer(AuthTokenSerializer):
     """
     Subclass of default AuthTokenSerializer to enable email authentication
     """
+    email = serializers.CharField(
+        label=_("Email"),
+        required=True,
+        help_text=_("A valid email."),
+    )
+
     username = serializers.CharField(
         label=_("Username"),
-        required=True,
+        required=False,
         help_text=_("A valid username."),
     )
+
     password = serializers.CharField(
         label=_("Password"),
         style={'input_type': 'password'},
@@ -244,17 +239,17 @@ class CustomAuthTokenSerializer(AuthTokenSerializer):
     )
 
     def validate(self, attrs):
-        username = attrs.get('username')
+        email = attrs.get('email')
         password = attrs.get('password')
 
         try:
-            user_obj = User.objects.get(email=username)
-            username = user_obj.username
+            user_obj = User.objects.get(email=email)
+            email = user_obj.email
         except User.DoesNotExist:
             pass
 
         user = authenticate(request=self.context.get('request'),
-                            username=username, password=password)
+                            email=email, password=password)
 
         if not user:
             msg = _('Unable to log in with provided credentials.')
@@ -266,7 +261,6 @@ class CustomAuthTokenSerializer(AuthTokenSerializer):
 
 
 class ResetPasswordSerializer(serializers.Serializer):
-
     email = serializers.EmailField(
         label=_('Email address'),
         max_length=254,
@@ -286,7 +280,6 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-
     token = serializers.CharField(
         required=True,
         help_text=_("Action token authorizing password change."),
@@ -298,8 +291,13 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class UsersActivationSerializer(serializers.Serializer):
-
     activation_token = serializers.CharField(
         required=True,
         help_text=_("Action token authorizing user activation."),
     )
+
+
+class PermissionSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Permission
+        fields = '__all__'

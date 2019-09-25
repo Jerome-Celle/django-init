@@ -14,7 +14,7 @@ install:
  - pip install pycodestyle
 
 script:
- - printf 'FJNR\nsarahJeanneT\ntest1\n\n\n \n6\n' | cookiecutter .
+ - printf 'FJNR\nGitUser\ntest1\n\n\n \n6\n' | cookiecutter .
  - cd test1
  - . env/bin/activate
  - coverage run --source=. --omit=env/* manage.py test

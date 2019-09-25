@@ -1,8 +1,6 @@
-import coreapi as coreapi
-import coreschema as coreschema
-
 from django.contrib.auth import get_user_model, password_validation
 from django.conf import settings
+from django.contrib.auth.models import Permission
 from django.utils import timezone
 from django.http import Http404
 from django.core.exceptions import ValidationError
@@ -16,15 +14,14 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import JSONParser
-from rest_framework.schemas import ManualSchema
 
-from . import services
+from {{cookiecutter.project_slug}} import permissions, services
 
 from .models import (
-    TemporaryToken, ActionToken,
-)
+    TemporaryToken,
+    ActionToken, )
 
-from . import serializers, permissions
+from . import serializers
 
 User = get_user_model()
 
@@ -128,7 +125,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     activate_token
                 )
 
-                response_send_mail = services.send_mail(
+                response_send_mail = services.send_templated_mail(
                     [user],
                     {
                         "activation_url": activation_url,
@@ -248,7 +245,7 @@ class ResetPassword(APIView):
             str(token)
         )
 
-        response_send_mail = services.send_mail(
+        response_send_mail = services.send_templated_mail(
             [user],
             {"forgot_password_url": button_url},
             "FORGOT_PASSWORD",
@@ -335,30 +332,6 @@ class ObtainTemporaryAuthToken(ObtainAuthToken):
     """
     model = TemporaryToken
     parser_classes = (JSONParser,)
-    if coreapi is not None and coreschema is not None:
-        schema = ManualSchema(
-            fields=[
-                coreapi.Field(
-                    name="login",
-                    required=True,
-                    location='form',
-                    schema=coreschema.String(
-                        title="Login",
-                        description="Valid email for authentication",
-                    ),
-                ),
-                coreapi.Field(
-                    name="password",
-                    required=True,
-                    location='form',
-                    schema=coreschema.String(
-                        title="Password",
-                        description="Valid password for authentication",
-                    ),
-                ),
-            ],
-            encoding="application/json",
-        )
 
     def get_serializer(self):
         return AuthTokenSerializer()
@@ -405,3 +378,11 @@ class TemporaryTokenDestroy(viewsets.GenericViewSet, mixins.DestroyModelMixin):
             user=self.request.user,
         )
         return tokens
+
+
+class PermissionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows permissions to be viewed or edited.
+    """
+    queryset = Permission.objects.all()
+    serializer_class = serializers.PermissionSerializer

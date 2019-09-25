@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     '{{cookiecutter.project_slug}}',
+    '{{cookiecutter.project_slug}}.apps.user',
     'anymail',
 ]
 
@@ -89,7 +90,7 @@ DATABASES = {
 
 # Custom user model
 
-AUTH_USER_MODEL = '{{cookiecutter.project_slug}}.User'
+AUTH_USER_MODEL = 'user.User'
 
 # Password validation
 # https://docs.djangoproject.com/en/2.0/ref/settings/#auth-password-validators
@@ -141,7 +142,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        '{{cookiecutter.project_slug}}.authentication.'
+        '{{cookiecutter.project_slug}}.apps.user.authentication.'
         'TemporaryTokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (

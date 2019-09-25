@@ -6,8 +6,8 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
 
+from {{cookiecutter.project_slug}}.factories import UserFactory
 from ..models import TemporaryToken
-from ..factories import UserFactory
 
 User = get_user_model()
 
@@ -21,12 +21,12 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         self.user.save()
         self.url = reverse('token_api')
 
-    def test_authenticate_username(self):
+    def test_authenticate_email(self):
         """
         Ensure we can authenticate on the platform.
         """
         data = {
-            'username': self.user.username,
+            'email': self.user.email,
             'password': 'Test123!'
         }
 
@@ -34,7 +34,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         token = TemporaryToken.objects.get(
-            user__username=self.user.username,
+            user__email=self.user.email,
         )
         self.assertContains(response, token)
 
@@ -43,7 +43,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         Ensure we can authenticate on the platform using a email.
         """
         data = {
-            'username': self.user.email,
+            'email': self.user.email,
             'password': 'Test123!'
         }
 
@@ -51,7 +51,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         token = TemporaryToken.objects.get(
-            user__username=self.user.username,
+            user__email=self.user.email,
         )
         self.assertContains(response, token)
 
@@ -60,7 +60,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         Ensure we can authenticate on the platform when token is expired.
         """
         data = {
-            'username': self.user.username,
+            'email': self.user.email,
             'password': 'Test123!'
         }
 
@@ -68,7 +68,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         token_old = TemporaryToken.objects.get(
-            user__username=self.user.username,
+            user__email=self.user.email,
         )
         token_old.expire()
 
@@ -76,7 +76,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         token_new = TemporaryToken.objects.get(
-            user__username=self.user.username,
+            user__email=self.user.email,
         )
 
         self.assertNotContains(response, token_old)
@@ -87,7 +87,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         Ensure we can't authenticate with a wrong password'
         """
         data = {
-            'username': self.user.username,
+            'email': self.user.email,
             'password': 'test123!'  # No caps on the first letter
         }
 
@@ -95,16 +95,16 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         tokens = TemporaryToken.objects.filter(
-            user__username='John'
+            user__email=self.user.email
         ).count()
         self.assertEqual(0, tokens)
 
-    def test_authenticate_bad_username(self):
+    def test_authenticate_bad_email(self):
         """
-        Ensure we can't authenticate with a wrong username
+        Ensure we can't authenticate with a wrong email
         """
         data = {
-            'username': 'Jon',  # Forget the `h` in `John`
+            'email': 'Jon@john',  # Forget the `h` in `John`
             'password': 'Test123!'
         }
 
@@ -112,7 +112,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         tokens = TemporaryToken.objects.filter(
-            user__username='John'
+            user__email=self.user.email
         ).count()
         self.assertEqual(0, tokens)
 
@@ -121,7 +121,7 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         Ensure we can't authenticate if user is inactive
         """
         data = {
-            'username': self.user.username,
+            'email': self.user.email,
             'password': 'Test123!'
         }
 
@@ -132,33 +132,33 @@ class ObtainTemporaryAuthTokenTests(APITestCase):
         content = {
             "non_field_errors": [
                 "Unable to log in with provided credentials."
-                ]
-            }
-
-        self.assertEqual(json.loads(response.content), content)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        tokens = TemporaryToken.objects.filter(
-            user__username=self.user.username
-        ).count()
-        self.assertEqual(0, tokens)
-
-    def test_authenticate_missing_parameter(self):
-        """
-        Ensure we can't authenticate if "username" or "password" are not
-        provided.
-        """
-        response = self.client.post(self.url, {}, format='json')
-
-        content = {
-            'password': ['This field is required.'],
-            'username': ['This field is required.']
+            ]
         }
 
         self.assertEqual(json.loads(response.content), content)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         tokens = TemporaryToken.objects.filter(
-            user__username=self.user.username
+            user__email=self.user.email
+        ).count()
+        self.assertEqual(0, tokens)
+
+    def test_authenticate_missing_parameter(self):
+        """
+        Ensure we can't authenticate if "email" or "password" are not
+        provided.
+        """
+        response = self.client.post(self.url, {}, format='json')
+
+        content = {
+            'password': ['This field is required.'],
+            'email': ['This field is required.']
+        }
+
+        self.assertEqual(json.loads(response.content), content)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        tokens = TemporaryToken.objects.filter(
+            user__email=self.user.email
         ).count()
         self.assertEqual(0, tokens)

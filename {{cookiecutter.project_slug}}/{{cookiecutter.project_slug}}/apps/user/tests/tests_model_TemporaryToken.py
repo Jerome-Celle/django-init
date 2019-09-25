@@ -2,8 +2,8 @@ from rest_framework.test import APIClient
 
 from rest_framework.test import APITestCase
 
+from {{cookiecutter.project_slug}}.factories import UserFactory
 from ..models import TemporaryToken
-from ..factories import UserFactory
 from django.utils import timezone
 
 

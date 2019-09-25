@@ -5,8 +5,7 @@ from rest_framework.test import APIClient, APITestCase
 
 from django.urls import reverse
 
-from .. import models
-from ..factories import UserFactory, AdminFactory
+from {{cookiecutter.project_slug}}.factories import UserFactory, AdminFactory
 
 
 class UsersIdTests(APITestCase):
@@ -27,10 +26,9 @@ class UsersIdTests(APITestCase):
             'is_staff',
             'last_login',
             'date_joined',
-            'gender',
-            'birthdate',
             'groups',
             'user_permissions',
+            'picture'
         ]
 
     def setUp(self):
@@ -268,8 +266,6 @@ class UsersIdTests(APITestCase):
             'phone': '1234567890',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         self.client.force_authenticate(user=self.user)
@@ -474,43 +470,6 @@ class UsersIdTests(APITestCase):
         )
 
         content = {'password': 'Bad password'}
-        self.assertEqual(json.loads(response.content), content)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_update_user_invalid_fields(self):
-        """
-        Ensure we can't update fields with invalid values.
-        """
-
-        data = {
-            'email': 'John@invalid.com',
-            'password': '1927nce-736',
-            'first_name': 'Chuck',
-            'last_name': 'Norris',
-            'gender': "invalid_gender",
-            'birthdate': "invalid_date",
-        }
-
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.patch(
-            reverse(
-                'user-detail',
-                kwargs={'pk': self.user.id},
-            ),
-            data,
-            format='json',
-        )
-
-        content = {
-            'birthdate': [
-                'Date has wrong format. Use one of these formats instead: '
-                'YYYY-MM-DD.'
-            ],
-            'gender': ['"invalid_gender" is not a valid choice.']
-        }
-
         self.assertEqual(json.loads(response.content), content)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

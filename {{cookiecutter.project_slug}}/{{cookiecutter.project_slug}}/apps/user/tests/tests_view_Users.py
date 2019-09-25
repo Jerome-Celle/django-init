@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.test.utils import override_settings
 from django.contrib.auth import get_user_model
 
-from ..factories import UserFactory, AdminFactory
+from {{cookiecutter.project_slug}}.factories import UserFactory, AdminFactory
 from ..models import ActionToken
 
 User = get_user_model()
@@ -34,14 +34,11 @@ class UsersTests(APITestCase):
         Ensure we can create a new user if we have the permission.
         """
         data = {
-            'username': 'John',
             'email': 'John@mailinator.com',
             'password': 'test123!',
             'phone': '1234567890',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         response = self.client.post(
@@ -66,14 +63,11 @@ class UsersTests(APITestCase):
         Ensure we can create a new user if we have the permission.
         """
         data = {
-            'username': 'John',
             'email': 'John@mailinator.com',
             'password': 'test123!',
             'phone': '1234567890',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         response = self.client.post(
@@ -103,8 +97,6 @@ class UsersTests(APITestCase):
             'phone': '',
             'first_name': '',
             'last_name': '',
-            'gender': "",
-            'birthdate': "",
         }
 
         response = self.client.post(
@@ -116,12 +108,7 @@ class UsersTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         content = {
-            'birthdate': [
-                'Date has wrong format. Use one of these formats instead: '
-                'YYYY-MM-DD.'
-            ],
             'first_name': ['This field may not be blank.'],
-            'gender': ['"" is not a valid choice.'],
             'last_name': ['This field may not be blank.'],
             'email': ['This field may not be blank.'],
             'password': ['This field may not be blank.'],
@@ -154,13 +141,10 @@ class UsersTests(APITestCase):
         Ensure we can't create a new user with a weak password
         """
         data = {
-            'username': 'John',
             'email': 'John@mailinator.com',
             'password': '19274682736',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         response = self.client.post(
@@ -174,53 +158,17 @@ class UsersTests(APITestCase):
         content = {"password": ['This password is entirely numeric.']}
         self.assertEqual(json.loads(response.content), content)
 
-    def test_create_new_user_invalid_fields(self):
-        """
-        Ensure we can't create a new user with invalid fields.
-        Emails are validated at creation time, this is why no email validation
-        messages are sent in this case.
-        """
-        data = {
-            'username': 'John',
-            'email': 'John@invalid.com',
-            'password': '1927nce-736',
-            'first_name': 'Chuck',
-            'last_name': 'Norris',
-            'gender': "invalid_gender",
-            'birthdate': "invalid_date",
-        }
-
-        response = self.client.post(
-            reverse('user-list'),
-            data,
-            format='json',
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        content = {
-            'birthdate': [
-                'Date has wrong format. Use one of these formats instead: '
-                'YYYY-MM-DD.'
-            ],
-            'gender': ['"invalid_gender" is not a valid choice.'],
-        }
-        self.assertEqual(json.loads(response.content), content)
-
     def test_create_new_user_invalid_phone(self):
         """
         Ensure we can't create a new user with an invalid phone number
         """
         data = {
-            'username': 'John',
             'email': 'John@mailinator.com',
             'password': '1fasd6dq#$%',
             'phone': '12345',
             'other_phone': '23445dfg',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         response = self.client.post(
@@ -243,14 +191,11 @@ class UsersTests(APITestCase):
         """
 
         data = {
-            'username': 'John',
             'email': 'John@mailinator.com',
             'password': 'test123!',
             'phone': '1234567890',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         user = UserFactory()
@@ -287,14 +232,11 @@ class UsersTests(APITestCase):
         """
 
         data = {
-            'username': 'John',
             'email': 'John@mailinator.com',
             'password': 'test123!',
             'phone': '1234567890',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         response = self.client.post(
@@ -332,14 +274,11 @@ class UsersTests(APITestCase):
         """
 
         data = {
-            'username': 'John',
             'email': 'John@mailinator.com',
             'password': 'test123!',
             'phone': '1234567890',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         response = self.client.post(
@@ -383,14 +322,11 @@ class UsersTests(APITestCase):
         """
 
         data = {
-            'username': 'John',
             'email': 'John@mailinator.com',
             'password': 'test123!',
             'phone': '1234567890',
             'first_name': 'Chuck',
             'last_name': 'Norris',
-            'gender': "M",
-            'birthdate': "1999-11-11",
         }
 
         response = self.client.post(
@@ -443,10 +379,9 @@ class UsersTests(APITestCase):
             'is_staff',
             'last_login',
             'date_joined',
-            'gender',
-            'birthdate',
             'groups',
             'user_permissions',
+            'picture'
         ]
         for key in first_user.keys():
             self.assertTrue(
