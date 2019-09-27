@@ -25,6 +25,88 @@ class User(AbstractUser):
     def __str__(self):
         return self.email
 
+    @staticmethod
+    def create(email, password, validated_data):
+        user, created = User.objects.get_or_create(
+            email=email, defaults=validated_data)
+
+        # Hash the user's password
+        user.set_password(password)
+        # Put user inactive by default
+        user.is_active = False
+        user.save()
+
+        # Create an ActivationToken to activate user in the future
+        ActionToken.objects.create(
+            user=user,
+            type='account_activation',
+        )
+
+        return user
+
+    def send_confirm_signup_email(self):
+        if settings.LOCAL_SETTINGS['EMAIL_SERVICE'] is True:
+
+            activation_url = ActionToken.generate_activation_url()
+
+            merge_data = {
+                "ACTIVATION_URL": activation_url,
+                "FIRST_NAME": self.first_name,
+                "LAST_NAME": self.last_name,
+            }
+            plain_msg = render_to_string(
+                "activation.txt",
+                merge_data
+            )
+            msg_html = render_to_string(
+                "activation.html",
+                merge_data
+            )
+            django_send_mail(
+                "Confirmation de la création de votre compte",
+                plain_msg,
+                settings.DEFAULT_FROM_EMAIL,
+                [self],
+                html_message=msg_html,
+            )
+
+    def send_reset_password(self):
+
+        forgot_password_url = ActionToken.generate_reset_password_url(self)
+
+        merge_data = {
+            "RESET_PASSWORD_URL": forgot_password_url
+        }
+        plain_msg = render_to_string(
+            "reset_password.txt",
+            merge_data
+        )
+        msg_html = render_to_string(
+            "reset_password.html",
+            merge_data
+        )
+        django_send_mail(
+            "Reset password",
+            plain_msg,
+            settings.DEFAULT_FROM_EMAIL,
+            [self],
+            html_message=msg_html,
+        )
+
+    def get_temporary_token(self):
+
+        token, _created = TemporaryToken.objects.get_or_create(
+            user=self
+        )
+
+        if token.expired:
+            # If the token is expired, generate a new one.
+            token.delete()
+
+            token = TemporaryToken.objects.create(
+                user=self)
+        return token
+
 
 class TemporaryToken(Token):
     """Subclass of Token to add an expiration time."""
@@ -127,6 +209,56 @@ class ActionToken(models.Model):
 
     def __str__(self):
         return self.key
+
+    @staticmethod
+    def generate_activation_url(user: User):
+        # Get the token of the saved user and send it with an email
+        activate_token = ActionToken.objects.get(
+            user=user,
+            type='account_activation',
+        )
+
+        return activate_token.get_url()
+
+    @staticmethod
+    def generate_reset_password_url(user: User):
+        # remove old tokens to change password
+        tokens = ActionToken.objects.filter(
+            type='password_change',
+            user=user,
+        )
+
+        for token in tokens:
+            token.expire()
+
+        # Get the token of the saved user and send it with an email
+        activate_token = ActionToken.objects.get(
+            user=self,
+            type='password_change',
+        )
+
+        return activate_token.get_url()
+
+    def get_url(self):
+
+        FRONTEND_SETTINGS = settings.LOCAL_SETTINGS[
+            'FRONTEND_INTEGRATION'
+        ]
+        # Setup the url for the activation button in the email
+        activation_url = FRONTEND_SETTINGS['ACTIVATION_URL'].replace(
+            "{% raw %}{{token}}{% endraw %}",
+            self.key
+        )
+
+        return activation_url
+
+    @staticmethod
+    def get_password_change_token(token_key):
+        return ActionToken.objects.get(
+            key=token_key,
+            type='password_change',
+            expired=False,
+        )
 
 
 class Address(models.Model):

@@ -183,13 +183,8 @@ ACTIVATION_TOKENS = {
 ANYMAIL = {
     'SENDINBLUE_API_KEY': 'example_key',
     'REQUESTS_TIMEOUT': (30, 30),
-    'TEMPLATES': {
-        'CONFIRM_SIGN_UP': 'example_id',
-        'FORGOT_PASSWORD': 'example_id',
-    },
 }
 EMAIL_BACKEND = 'anymail.backends.sendinblue.EmailBackend'
-# This 'FROM' email is not used with SendInBlue templates
 DEFAULT_FROM_EMAIL = 'noreply@example.org'
 
 # User specific settings

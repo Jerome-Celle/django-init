@@ -63,7 +63,7 @@ class UserUpdateSerializer(serializers.HyperlinkedModelSerializer):
     def validate_other_phone(self, value):
         return phone_number_validator(value)
 
-    def update(self, instance, validated_data):
+    def update(self, user: User, validated_data):
         if 'new_password' in validated_data.keys():
             try:
                 old_pw = validated_data.pop('password')
@@ -81,14 +81,14 @@ class UserUpdateSerializer(serializers.HyperlinkedModelSerializer):
                     'new_password': err.messages
                 })
 
-            if instance.check_password(old_pw):
-                instance.set_password(new_pw)
-                instance.save()
+            if user.check_password(old_pw):
+                user.set_password(new_pw)
+                user.save()
             else:
                 msg = {'password': _("Bad password")}
                 raise serializers.ValidationError(msg)
 
-        return super().update(instance, validated_data)
+        return super().update(user, validated_data)
 
     class Meta:
         model = User
@@ -144,14 +144,9 @@ class UserSerializer(UserUpdateSerializer):
             raise serializers.ValidationError(err.messages)
         return value
 
-    def create(self, validated_data):
-        """
-        Validate choosen password and create User object.
-        """
-        email = validated_data.pop('email')
-        password = validated_data.pop('password')
+    def validate_email(self, value):
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(email=value)
 
             if user.has_usable_password() and user.is_active:
                 raise serializers.ValidationError({
@@ -166,22 +161,14 @@ class UserSerializer(UserUpdateSerializer):
         except ObjectDoesNotExist:
             pass
 
-        user, created = User.objects.get_or_create(
-            email=email, defaults=validated_data)
+    def create(self, validated_data):
+        """
+        Validate choosen password and create User object.
+        """
+        email = validated_data.pop('email')
+        password = validated_data.pop('password')
 
-        # Hash the user's password
-        user.set_password(password)
-        # Put user inactive by default
-        user.is_active = False
-        user.save()
-
-        # Create an ActivationToken to activate user in the future
-        ActionToken.objects.create(
-            user=user,
-            type='account_activation',
-        )
-
-        return user
+        return User.create(email, password, validated_data)
 
     class Meta:
         model = User
@@ -288,6 +275,28 @@ class ChangePasswordSerializer(serializers.Serializer):
         required=True,
         help_text=_("Desired password"),
     )
+
+    def validate_new_password(self, new_password):
+        try:
+            password_validation.validate_password(password=new_password)
+        except ValidationError as err:
+            raise serializers.ValidationError(err.messages)
+        return value
+
+    def validate_token(self, token):
+        tokens = ActionToken.objects.filter(
+            key=token,
+            type='password_change',
+            expired=False,
+        )
+
+        # There is only one reference, we will change the user password
+        if not len(tokens) == 1:
+            raise serializers.ValidationError({
+                'token': f'{token} is not a valid token.'
+            })
+        else:
+            return token
 
 
 class UsersActivationSerializer(serializers.Serializer):

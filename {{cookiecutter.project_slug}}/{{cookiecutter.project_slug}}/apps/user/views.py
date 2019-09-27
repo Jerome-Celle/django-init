@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import JSONParser
 
-from {{cookiecutter.project_slug}} import permissions, services
+from {{cookiecutter.project_slug}} import permissions
 
 from .models import (
     TemporaryToken,
@@ -107,41 +107,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 user.is_active = True
                 user.save()
 
-            if settings.LOCAL_SETTINGS['EMAIL_SERVICE'] is True:
-                MAIL_SERVICE = settings.ANYMAIL
-                FRONTEND_SETTINGS = settings.LOCAL_SETTINGS[
-                    'FRONTEND_INTEGRATION'
-                ]
-
-                # Get the token of the saved user and send it with an email
-                activate_token = ActionToken.objects.get(
-                    user=user,
-                    type='account_activation',
-                ).key
-
-                # Setup the url for the activation button in the email
-                activation_url = FRONTEND_SETTINGS['ACTIVATION_URL'].replace(
-                    "{% raw %}{{token}}{% endraw %}",
-                    activate_token
-                )
-
-                response_send_mail = services.send_templated_mail(
-                    [user],
-                    {
-                        "activation_url": activation_url,
-                        "first_name": user.first_name,
-                        "last_name": user.last_name,
-                    },
-                    "CONFIRM_SIGN_UP",
-                )
-
-                if response_send_mail:
-                    content = {
-                        'detail': _("The account was created but no email was "
-                                    "sent. If your account is not "
-                                    "activated, contact the administration."),
-                    }
-                    return Response(content, status=status.HTTP_201_CREATED)
+            user.send_confirm_signup_email()
 
         return response
 
@@ -221,46 +187,9 @@ class ResetPassword(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # remove old tokens to change password
-        tokens = ActionToken.objects.filter(
-            type='password_change',
-            user=user,
-        )
+        user.send_reset_password()
 
-        for token in tokens:
-            token.expire()
-
-        # create the new token
-        token = ActionToken.objects.create(
-            type='password_change',
-            user=user,
-        )
-
-        # Send the new token by e-mail to the user
-        MAIL_SERVICE = settings.ANYMAIL
-        FRONTEND_SETTINGS = settings.LOCAL_SETTINGS['FRONTEND_INTEGRATION']
-
-        button_url = FRONTEND_SETTINGS['FORGOT_PASSWORD_URL'].replace(
-            "{% raw %}{{token}}{% endraw %}",
-            str(token)
-        )
-
-        response_send_mail = services.send_templated_mail(
-            [user],
-            {"forgot_password_url": button_url},
-            "FORGOT_PASSWORD",
-        )
-
-        if response_send_mail:
-            content = {
-                'detail': _("Your token has been created but no email "
-                            "has been sent. Please contact the "
-                            "administration."),
-            }
-            return Response(content, status=status.HTTP_201_CREATED)
-
-        else:
-            return Response(status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_201_CREATED)
 
 
 class ChangePassword(APIView):
@@ -280,49 +209,26 @@ class ChangePassword(APIView):
         serializer = serializers.ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        token = request.data.get('token')
+        token_key = request.data.get('token')
         new_password = request.data.get('new_password')
 
-        tokens = ActionToken.objects.filter(
-            key=token,
-            type='password_change',
-            expired=False,
+        token = ActionToken.get_password_change_token(token_key)
+
+        user = token.user
+
+        user.set_password(new_password)
+        user.save()
+
+        # We expire the token used
+        token.expire()
+
+        # We return the user
+        serializer = serializers.UserSerializer(
+            user,
+            context={'request': request}
         )
 
-        # There is only one reference, we will change the user password
-        if len(tokens) == 1:
-            user = tokens[0].user
-            try:
-                password_validation.validate_password(password=new_password)
-            except ValidationError as err:
-                content = {
-                    'password': err,
-                }
-                return Response(content, status=status.HTTP_400_BAD_REQUEST)
-
-            user.set_password(new_password)
-            user.save()
-
-            # We expire the token used
-            tokens[0].expire()
-
-            # We return the user
-            serializer = serializers.UserSerializer(
-                user,
-                context={'request': request}
-            )
-
-            return Response(serializer.data)
-
-        # There is no reference to this token or multiple identical token
-        # token exists
-        else:
-            error = '{0} is not a valid token.'.format(token)
-
-            return Response(
-                {'token': error},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        return Response(serializer.data)
 
 
 class ObtainTemporaryAuthToken(ObtainAuthToken):
@@ -337,28 +243,14 @@ class ObtainTemporaryAuthToken(ObtainAuthToken):
         return AuthTokenSerializer()
 
     def post(self, request):
-        CONFIG = settings.REST_FRAMEWORK_TEMPORARY_TOKENS
         serializer = serializers.CustomAuthTokenSerializer(
             data=request.data,
             context={'request': request},
         )
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        token = None
 
-        token, _created = TemporaryToken.objects.get_or_create(
-            user=user
-        )
-
-        if token.expired:
-            # If the token is expired, generate a new one.
-            token.delete()
-            expires = timezone.now() + timezone.timedelta(
-                minutes=CONFIG['MINUTES']
-            )
-
-            token = TemporaryToken.objects.create(
-                user=user, expires=expires)
+        token = user.get_temporary_token()
 
         data = {'token': token.key}
         return Response(data)
