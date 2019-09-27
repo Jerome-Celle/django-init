@@ -31,9 +31,12 @@ class ChangePasswordTests(APITestCase):
         """
         Ensure we can change a password with a valid token and a good password
         """
+
+        new_password = 'dWqq!Kld3#9dw'
+
         data = {
             'token': self.token.key,
-            'new_password': 'dWqq!Kld3#9dw'
+            'new_password': new_password
         }
 
         response = self.client.post(
@@ -48,13 +51,15 @@ class ChangePasswordTests(APITestCase):
             expired=False,
         )
 
-        self.assertEqual(json.loads(response.content)['id'], self.user.id)
+        return_user_id = json.loads(response.content)['id']
+
+        self.assertEqual(return_user_id, self.user.id)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # We sync user after this change
         user = User.objects.get(id=self.user.id)
-        self.assertTrue(user.check_password('dWqq!Kld3#9dw'))
+        self.assertTrue(user.check_password(new_password))
 
         self.assertTrue(len(tokens) == 0)
 

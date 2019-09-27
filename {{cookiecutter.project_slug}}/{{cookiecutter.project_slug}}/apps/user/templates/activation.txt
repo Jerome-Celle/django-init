@@ -1,6 +1,6 @@
 Activation
 
 Bonjour {% raw %}{{ FIRST_NAME }}{% endraw %} {% raw %}{{ LAST_NAME }}{% endraw %},
-Veuillez activer votre profil Thèsez-vous afin de confirmer votre adresse courriel.
+Veuillez activer votre profil afin de confirmer votre adresse courriel.
 
 {% raw %}{{ ACTIVATION_URL }}{% endraw %}

@@ -44,6 +44,17 @@ router = OptionalSlashDefaultRouter()
 router.registry.extend(user_router.registry)
 
 urlpatterns = [
+    path(
+        'admin/', admin.site.urls
+    ),
+    path(
+        'docs/',
+        include_docs_urls(
+            title=settings.LOCAL_SETTINGS['ORGANIZATION'] + " API",
+            authentication_classes=[],
+            permission_classes=[],
+        )
+    ),
     path('', include(user_urls)),
     path('', include(router.urls)),  # includes router generated URL
 ]

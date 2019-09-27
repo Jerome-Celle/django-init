@@ -6,9 +6,10 @@ from rest_framework.test import APIClient, APITestCase
 from django.urls import reverse
 
 from {{cookiecutter.project_slug}}.factories import UserFactory, AdminFactory
+from {{cookiecutter.project_slug}}.testClasses import SerializerTestCase
 
 
-class UsersIdTests(APITestCase):
+class UsersIdTests(SerializerTestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -98,22 +99,7 @@ class UsersIdTests(APITestCase):
         # Check id of the user
         self.assertEqual(content['id'], 1)
 
-        # Check the system doesn't return attributes not expected
-        attributes = self.user_attrs.copy()
-        for key in content.keys():
-            self.assertTrue(
-                key in attributes,
-                'Attribute "{0}" is not expected but is '
-                'returned by the system.'.format(key)
-            )
-            attributes.remove(key)
-
-        # Ensure the system returns all expected attributes
-        self.assertTrue(
-            len(attributes) == 0,
-            'The system failed to return some '
-            'attributes : {0}'.format(attributes)
-        )
+        self.validate_attrs(content)
 
         # Check the status code
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -135,22 +121,7 @@ class UsersIdTests(APITestCase):
         # Check id of the user
         self.assertEqual(content['id'], 1)
 
-        # Check the system doesn't return attributes not expected
-        attributes = self.user_attrs.copy()
-        for key in content.keys():
-            self.assertTrue(
-                key in attributes,
-                'Attribute "{0}" is not expected but is '
-                'returned by the system.'.format(key)
-            )
-            attributes.remove(key)
-
-        # Ensure the system returns all expected attributes
-        self.assertTrue(
-            len(attributes) == 0,
-            'The system failed to return some '
-            'attributes : {0}'.format(attributes)
-        )
+        self.validate_attrs(content)
 
         # Check the status code
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -183,22 +154,7 @@ class UsersIdTests(APITestCase):
         # Check id of the user
         self.assertEqual(content['id'], 1)
 
-        # Check the system doesn't return attributes not expected
-        attributes = self.user_attrs.copy()
-        for key in content.keys():
-            self.assertTrue(
-                key in attributes,
-                'Attribute "{0}" is not expected but is '
-                'returned by the system.'.format(key)
-            )
-            attributes.remove(key)
-
-        # Ensure the system returns all expected attributes
-        self.assertTrue(
-            len(attributes) == 0,
-            'The system failed to return some '
-            'attributes : {0}'.format(attributes)
-        )
+        self.validate_attrs(content)
 
         # Check the status code
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -230,22 +186,7 @@ class UsersIdTests(APITestCase):
         # Check id of the user
         self.assertEqual(content['id'], 1)
 
-        # Check the system doesn't return attributes not expected
-        attributes = self.user_attrs.copy()
-        for key in content.keys():
-            self.assertTrue(
-                key in attributes,
-                'Attribute "{0}" is not expected but is '
-                'returned by the system.'.format(key)
-            )
-            attributes.remove(key)
-
-        # Ensure the system returns all expected attributes
-        self.assertTrue(
-            len(attributes) == 0,
-            'The system failed to return some '
-            'attributes : {0}'.format(attributes)
-        )
+        self.validate_attrs(content)
 
         self.user.refresh_from_db()
 
@@ -290,22 +231,7 @@ class UsersIdTests(APITestCase):
         # Check id of the user
         self.assertEqual(content['id'], 1)
 
-        # Check the system doesn't return attributes not expected
-        attributes = self.user_attrs.copy()
-        for key in content.keys():
-            self.assertTrue(
-                key in attributes,
-                'Attribute "{0}" is not expected but is '
-                'returned by the system.'.format(key)
-            )
-            attributes.remove(key)
-
-        # Ensure the system returns all expected attributes
-        self.assertTrue(
-            len(attributes) == 0,
-            'The system failed to return some '
-            'attributes : {0}'.format(attributes)
-        )
+        self.validate_attrs(content)
 
         # Check the status code
         self.assertEqual(response.status_code, status.HTTP_200_OK)
